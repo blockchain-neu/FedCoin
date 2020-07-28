@@ -1,41 +1,11 @@
-from abc import *
-from blockchain.data.chain_structure import ChainStructure
-from blockchain.network.message import MessageHandler, JoinMessage, QuitMessage
-from blockchain.network.p2p import P2P
-from blockchain.util import Printer
-
-
-class Application:
-    def __init__(self):
-        self.app_vars = {
-            'size': [0],
-            'last_hash': '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-                         '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
-            'addr': P2P.get_addr(),
-            'local_blk': None,
-            'whitelist': [P2P.get_addr()],
-            'chain_struct': ChainStructure()
-        }
-        self.network = P2P()
-        self.printer = Printer()
-        self.msg_handler = MessageHandler(self)
-        return
-
-    @abstractmethod
-    def run(self):
-        pass
-
-    def set_var(self, key: str, value):
-        self.app_vars[key] = value
-        return
-
-    def get_var(self, key: str):
-        return self.app_vars[key]
+from blockchain.network.message import JoinMessage, QuitMessage
+from blockchain.consensus.posap import PoSapMessageHandler
+from blockchain.application.application import Application
 
 
 class FedCoin(Application):
     def __init__(self):
-        super(FedCoin, self).__init__()
+        super(FedCoin, self).__init__(PoSapMessageHandler(self))
         return
 
     def run(self):

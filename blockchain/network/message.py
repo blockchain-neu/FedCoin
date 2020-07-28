@@ -96,7 +96,7 @@ class MessageHandlingTask(threading.Thread):
         self.addr = addr
         return
 
-    def run(self):
+    def base_handle(self):
         self.printer.print('Received a \"' + self.msg_type + '\" message from ' + self.addr + ' at ' +
                            str(self.msg_dict['timestamp']))
         if self.msg_type == 'join':
@@ -105,8 +105,9 @@ class MessageHandlingTask(threading.Thread):
                 self.app.get_var('whitelist').append(self.addr)
                 self.msg_handler.lock.release()
                 msg = ReJoinMessage(self.app.get_var('size'), self.app.get_var('last_hash'))
-                self.network.send(msg)
-                self.printer.print('Sent a \"' + self.msg_type + '\" message at ' + str(self.msg_dict['timestamp']))
+                self.network.send(msg, self.addr)
+                self.printer.print('Sent a \"' + self.msg_type + '\" message to ' + self.addr + ' at ' +
+                                   str(self.msg_dict['timestamp']))
         elif self.msg_type == 're_join':
             if self.addr not in self.app.get_var['whitelist']:
                 self.msg_handler.lock.acquire()
@@ -115,18 +116,23 @@ class MessageHandlingTask(threading.Thread):
                     self.app.set_var('size', self.msg_dict['size'])
                     self.app.set_var('last_hash', self.msg_dict['last_hash'])
                     msg = SyncMessage(len(self.app.get_var('chain_struct').chain))
-                    self.network.send(msg)
-                    self.printer.print('Sent a \"' + self.msg_type + '\" message at ' + str(self.msg_dict['timestamp']))
+                    self.network.send(msg, self.addr)
+                    self.printer.print('Sent a \"' + self.msg_type + '\" message to ' + self.addr + ' at ' +
+                                       str(self.msg_dict['timestamp']))
                 self.msg_handler.lock.release()
         elif self.msg_type == 'sync':
             if len(self.app.get_var('chain_struct').chain) > self.msg_dict['blk_id']:
                 msg = ReSyncMessage(self.app.get_var('chain_struct').chain[self.msg_dict['blk_id']])
-                self.network.send(msg)
-                self.printer.print('Sent a \"' + self.msg_type + '\" message at ' + str(self.msg_dict['timestamp']))
-        elif self.msg_type == 're_sync':
-            # todo
-            pass
+                self.network.send(msg, self.addr)
+                self.printer.print('Sent a \"' + self.msg_type + '\" message to ' + self.addr + ' at ' +
+                                   str(self.msg_dict['timestamp']))
         elif self.msg_type == 'quit':
-            # todo
-            pass
+            if self.addr in self.app.get_var['whitelist']:
+                self.msg_handler.lock.acquire()
+                self.app.get_var['whitelist'].remove(self.addr)
+                self.msg_handler.lock.release()
+        return
+
+    def run(self):
+        self.base_handle()
         return
