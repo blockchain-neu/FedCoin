@@ -5,7 +5,8 @@ from blockchain.application.application import Application
 
 class FedCoin(Application):
     def __init__(self):
-        super(FedCoin, self).__init__(PoSapMessageHandler(self))
+        super(FedCoin, self).__init__()
+        self.msg_handler = PoSapMessageHandler(self)
         return
 
     def run(self):

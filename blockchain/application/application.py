@@ -6,7 +6,7 @@ from blockchain.util import Printer
 
 
 class Application:
-    def __init__(self, msg_handler: MessageHandler):
+    def __init__(self):
         self.app_vars = {
             'size': [0],
             'last_hash': '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
@@ -18,7 +18,7 @@ class Application:
         }
         self.network = P2P()
         self.printer = Printer()
-        self.msg_handler = msg_handler
+        self.msg_handler = MessageHandler(self)
         return
 
     @abstractmethod

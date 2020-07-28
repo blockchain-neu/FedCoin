@@ -106,10 +106,10 @@ class MessageHandlingTask(threading.Thread):
                 self.msg_handler.lock.release()
                 msg = ReJoinMessage(self.app.get_var('size'), self.app.get_var('last_hash'))
                 self.network.send(msg, self.addr)
-                self.printer.print('Sent a \"' + self.msg_type + '\" message to ' + self.addr + ' at ' +
+                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
                                    str(self.msg_dict['timestamp']))
         elif self.msg_type == 're_join':
-            if self.addr not in self.app.get_var['whitelist']:
+            if self.addr not in self.app.get_var('whitelist'):
                 self.msg_handler.lock.acquire()
                 self.app.get_var('whitelist').append(self.addr)
                 if self.app.get_var('size') < self.msg_dict['size']:
@@ -117,19 +117,19 @@ class MessageHandlingTask(threading.Thread):
                     self.app.set_var('last_hash', self.msg_dict['last_hash'])
                     msg = SyncMessage(len(self.app.get_var('chain_struct').chain))
                     self.network.send(msg, self.addr)
-                    self.printer.print('Sent a \"' + self.msg_type + '\" message to ' + self.addr + ' at ' +
+                    self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
                                        str(self.msg_dict['timestamp']))
                 self.msg_handler.lock.release()
         elif self.msg_type == 'sync':
             if len(self.app.get_var('chain_struct').chain) > self.msg_dict['blk_id']:
                 msg = ReSyncMessage(self.app.get_var('chain_struct').chain[self.msg_dict['blk_id']])
                 self.network.send(msg, self.addr)
-                self.printer.print('Sent a \"' + self.msg_type + '\" message to ' + self.addr + ' at ' +
+                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
                                    str(self.msg_dict['timestamp']))
         elif self.msg_type == 'quit':
-            if self.addr in self.app.get_var['whitelist']:
+            if self.addr in self.app.get_var('whitelist'):
                 self.msg_handler.lock.acquire()
-                self.app.get_var['whitelist'].remove(self.addr)
+                self.app.get_var('whitelist').remove(self.addr)
                 self.msg_handler.lock.release()
         return
 

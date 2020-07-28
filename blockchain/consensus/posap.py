@@ -112,7 +112,7 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                 if self.app.get_var('size') > blk.blk_id + 1:
                     msg = SyncMessage(blk.blk_id + 1)
                     self.network.send(msg, self.addr)
-                    self.printer.print('Sent a \"' + self.msg_type + '\" message to ' + self.addr + ' at ' +
+                    self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
                                        str(self.msg_dict['timestamp']))
         elif self.msg_type == 'task':
             pass
