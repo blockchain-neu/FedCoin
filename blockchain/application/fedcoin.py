@@ -1,5 +1,5 @@
 from blockchain.network.message import JoinMessage, QuitMessage
-from blockchain.consensus.posap import PoSapMessageHandler, TaskMessage, BlockMessage
+from blockchain.consensus.posap import PoSapBlock, PoSapMessageHandler, TaskMessage, BlockMessage
 from blockchain.application.application import Application
 from blockchain.util.settings import *
 import time
@@ -9,7 +9,9 @@ class FedCoin(Application):
     def __init__(self):
         super(FedCoin, self).__init__()
         self.msg_handler = PoSapMessageHandler(self)
-        self.app_vars.update('avg_s', [0] * K)
+        self.app_vars['avg_s'] = [0] * K
+        self.app_vars['local_blk'] = PoSapBlock(0, '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+                                                   '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
         return
 
     def run(self):
