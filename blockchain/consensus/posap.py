@@ -106,9 +106,10 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
         self.base_handle()
         if self.msg_type == 're_sync':
             blk = PoSapBlock.deserialize(bytes(self.msg_dict['blk']))
-            if len(self.app.get_var('chain_struct').chain) == blk.blk_id and PoSap.verify_blk(blk):
+            if len(self.app.get_var('chain_struct').chain) == blk.blk_id and \
+                    PoSap.verify_blk(blk, self.msg_handler.app):
                 self.msg_handler.lock.acquire()
-                self.app.app_vars['chain_struct'].append(blk)
+                self.app.get_var('chain_struct').append(blk)
                 self.msg_handler.lock.release()
                 if self.app.get_var('size') > blk.blk_id + 1:
                     msg = SyncMessage(blk.blk_id + 1)
@@ -116,9 +117,27 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                     self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
                                        str(self.msg_dict['timestamp']))
         elif self.msg_type == 'task':
-            pass
+            model_url = self.msg_dict['model_url']
+            price = self.msg_dict['price']
+            timeout = self.msg_dict['timeout']
+            # todo
         elif self.msg_type == 'blk':
-            pass
+            blk = PoSapBlock.deserialize(bytes(self.msg_dict['blk']))
+            size = len(self.app.get_var('size'))
+            if PoSap.verify_blk(blk, self.msg_handler.app):
+                if size == blk.blk_id:
+                    self.msg_handler.lock.acquire()
+                    self.app.get_var('chain_struct').append(blk)
+                    self.app.set_var('size', size + 1)
+                    self.msg_handler.lock.release()
+                elif size == blk.blk_id + 1:
+                    old_blk = self.app.get_var('chain_struct')[blk.blk_id]
+                    if PoSap.calc_dist(blk.ave_s, blk.winner_s) < PoSap.calc_dist(old_blk.ave_s, old_blk.winner_s):
+                        self.msg_handler.lock.acquire()
+                        chain_struct = self.app.get_var('chain_struct')
+                        chain_struct.pop()
+                        chain_struct.append(blk)
+                        self.msg_handler.lock.release()
         return
 
 
@@ -133,7 +152,7 @@ class PoSap(Consensus):
         s = [0.0] * K
         t = 0
         s_t = [0.0] * K
-        while self.verify_blk(self.app.app_vars['local_blk']):
+        while PoSap.verify_blk(self.app.get_var('local_blk'), self.app):
             r = random.shuffle(range(K))
             s_t[r[0]] = PoSap.calc_loss(r[0])
             for i in range(1, K):
@@ -146,17 +165,19 @@ class PoSap(Consensus):
             t += 1
         return
 
-    def generate_blk(self) -> PoSapBlock:
+    @staticmethod
+    def generate_blk() -> PoSapBlock:
 
         pass
 
-    def verify_blk(self, blk: PoSapBlock) -> bool:
-        ave_s = self.app.app_vars['ave_s']
+    @staticmethod
+    def verify_blk(blk: PoSapBlock, app) -> bool:
+        ave_s = app.get_var('ave_s')
         s_t = blk.winner_s
         ave_s_t = blk.ave_s
         if PoSap.calc_dist(s_t, ave_s_t) <= D:
             if PoSap.calc_dist(ave_s, ave_s_t) <= D:
-                if blk.blk_id >= self.app.app_vars['size']:
+                if blk.blk_id >= app.get_var('size'):
                     return True
         return False
 
