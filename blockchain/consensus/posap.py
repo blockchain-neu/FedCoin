@@ -1,11 +1,11 @@
 from blockchain.data.transaction import Transaction
 from blockchain.network.message import *
 from blockchain.consensus.consensus import Consensus
+from blockchain.util.settings import *
 import hashlib
+import math
+import random
 import struct
-
-
-D = 0.5  # Difficulty
 
 
 # Data Layer
@@ -62,7 +62,7 @@ class PoSapBlock(Block):
         for i in range(len_txs):
             txs.append(Transaction.deserialize(data[pointer:pointer+16]))
             pointer += 16
-        return Block(blk_id, prev_hash, winner_id, ave_s, winner_s, difficulty, '', txs)
+        return PoSapBlock(blk_id, prev_hash, winner_id, ave_s, winner_s, difficulty, '', txs)
 
     def hash(self) -> str:
         return hashlib.sha256(self.serialize()).hexdigest()
@@ -70,10 +70,11 @@ class PoSapBlock(Block):
 
 # Network Layer
 class TaskMessage(Message):
-    def __init__(self, model_url: str, price: float):
+    def __init__(self, model_url: str, price: float, runtime: float):
         super(TaskMessage, self).__init__('task')
         self.update_kv('model_url', model_url)
         self.update_kv('price', price)
+        self.update_kv('runtime', runtime)
         return
 
 
@@ -123,20 +124,51 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
 
 # Consensus Layer
 class PoSap(Consensus):
-    def __init__(self):
+    def __init__(self, app):
         super(PoSap, self).__init__()
+        self.app = app
         return
 
-    def run(self):
-
+    def run(self):  # todo
+        s = [0.0] * K
+        t = 0
+        s_t = [0.0] * K
+        while self.verify_blk(self.app.app_vars['local_blk']):
+            r = random.shuffle(range(K))
+            s_t[r[0]] = PoSap.calc_loss(r[0])
+            for i in range(1, K):
+                s_t[r[i]] = PoSap.calc_loss(r[i])
+                tmp = 0
+                for j in range(0, i - 1):
+                    tmp += s_t[r[j]]
+                s_t[r[i]] = s_t[r[i]] - tmp
+            s = (s * t + s_t) / (t + 1)
+            t += 1
         return
 
-    @staticmethod
-    def generate_blk() -> Block:
+    def generate_blk(self) -> PoSapBlock:
 
         pass
 
-    @staticmethod
-    def verify_blk(blk: Block) -> bool:
-
+    def verify_blk(self, blk: PoSapBlock) -> bool:
+        ave_s = self.app.app_vars['ave_s']
+        s_t = blk.winner_s
+        ave_s_t = blk.ave_s
+        if PoSap.calc_dist(s_t, ave_s_t) <= D:
+            if PoSap.calc_dist(ave_s, ave_s_t) <= D:
+                if blk.blk_id >= self.app.app_vars['size']:
+                    return True
         return False
+
+    @staticmethod
+    def calc_loss(client_id: int):
+
+        return 0.0
+
+    @staticmethod
+    def calc_dist(x: list, y: list) -> float:
+        ret = 0.0
+        for i in range(len(x)):
+            ret += pow(x[i] - y[i], 2)
+        ret = math.sqrt(ret)
+        return ret

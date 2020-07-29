@@ -10,10 +10,10 @@ class Consensus(ABC):
     def run(self):
         pass
 
-    @staticmethod
-    def generate_blk() -> Block:
+    @abstractmethod
+    def generate_blk(self) -> Block:
         pass
 
-    @staticmethod
-    def verify_blk(blk: Block) -> bool:
+    @abstractmethod
+    def verify_blk(self, blk: Block) -> bool:
         pass
