@@ -2,10 +2,13 @@ from blockchain.data.transaction import Transaction
 from blockchain.network.message import *
 from blockchain.consensus.consensus import Consensus
 from blockchain.util.settings import *
+import copy
 import hashlib
 import math
+import numpy as np
 import random
 import struct
+import tensorflow as tf
 
 
 # Data Layer
@@ -17,8 +20,8 @@ class PoSapBlock(Block):
             self.readonly = True
         else:
             self.winner_id = 0
-            self.ave_s = []
-            self.winner_s = []
+            self.ave_s = [0] * K
+            self.winner_s = [1] * K
             self.difficulty = D
             self.task_spec = []
             self.txs = []
@@ -117,10 +120,19 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                     self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
                                        str(self.msg_dict['timestamp']))
         elif self.msg_type == 'task':
-            model_url = self.msg_dict['model_url']
             price = self.msg_dict['price']
-            timeout = self.msg_dict['timeout']
-            # todo
+            weights_list = self.app.get_var('weights_list')
+            self.msg_handler.lock.acquire()
+            weights_list.clear()
+            self.msg_handler.lock.release()
+            for i in range(K):
+                model = tf.keras.models.load_model('save_model/model_' + str(i + 1) + '.h5')
+                self.msg_handler.lock.acquire()
+                weights_list.append(copy.deepcopy(model.get_weights()))
+                self.msg_handler.lock.release()
+                del model
+                tf.keras.backend.clear_session()
+            PoSap(self.app).run()
         elif self.msg_type == 'blk':
             blk = PoSapBlock.deserialize(bytes(self.msg_dict['blk']))
             size = len(self.app.get_var('size'))
@@ -146,24 +158,33 @@ class PoSap(Consensus):
     def __init__(self, app):
         super(PoSap, self).__init__()
         self.app = app
+        self.weights_list = self.app.get_var('weights_list')
         return
 
-    def run(self):  # todo
+    def run(self):
+        ave_s = self.app.get_var('ave_s')
         s = [0.0] * K
         t = 0
         s_t = [0.0] * K
-        while PoSap.verify_blk(self.app.get_var('local_blk'), self.app):
-            r = random.shuffle(range(K))
-            s_t[r[0]] = PoSap.calc_loss(r[0])
+        while True:  # not PoSap.verify_blk(self.app.get_var('local_blk'), self.app):
+            r = [*range(K)]
+            random.shuffle(r)
+            print(r)
+
+            weights = PoSap.aggregate(self.weights_list[r[0]])
+            s_t[r[0]] = PoSap.calc_accuracy(weights)
             for i in range(1, K):
-                s_t[r[i]] = PoSap.calc_loss(r[i])
+                weights = PoSap.aggregate(PoSap.aggregate(self.weights_list[r[i]]), weights, i)
+                s_t[r[i]] = PoSap.calc_accuracy(weights)
                 tmp = 0
                 for j in range(0, i - 1):
                     tmp += s_t[r[j]]
                 s_t[r[i]] = s_t[r[i]] - tmp
-            s = (s * t + s_t) / (t + 1)
+            s = (s * t + s_t) / np.array([t + 1])
+            ave_s = (ave_s * np.array([t]) + s) / np.array([t + 1])
+            print(PoSap.calc_accuracy(weights), s)
             t += 1
-        return
+        # return
 
     @staticmethod
     def generate_blk() -> PoSapBlock:
@@ -182,9 +203,27 @@ class PoSap(Consensus):
         return False
 
     @staticmethod
-    def calc_loss(client_id: int):
+    def calc_accuracy(weights):
+        mnist = tf.keras.datasets.mnist
 
-        return 0.0
+        (x_train, y_train), (x_test, y_test) = mnist.load_data()
+        x_train, x_test = x_train / 255.0, x_test / 255.0
+
+        model = tf.keras.models.Sequential([
+            tf.keras.layers.Flatten(input_shape=(28, 28)),
+            tf.keras.layers.Dense(128, activation='relu'),
+            tf.keras.layers.Dropout(0.2),
+            tf.keras.layers.Dense(10, activation='softmax')
+        ])
+
+        model.compile(optimizer='adam',
+                      loss='sparse_categorical_crossentropy',
+                      metrics=['accuracy'])
+
+        model.set_weights(weights)
+
+        [loss, accuracy] = model.evaluate(x_test, y_test, verbose=2)
+        return accuracy
 
     @staticmethod
     def calc_dist(x: list, y: list) -> float:
@@ -193,3 +232,10 @@ class PoSap(Consensus):
             ret += pow(x[i] - y[i], 2)
         ret = math.sqrt(ret)
         return ret
+
+    @staticmethod
+    def aggregate(weights, prev_weights=None, count: int = 0):
+        if prev_weights is None:
+            return weights
+        else:
+            return (prev_weights * np.array([count]) + weights) / np.array([count + 1])
