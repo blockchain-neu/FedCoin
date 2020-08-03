@@ -7,11 +7,11 @@ class Consensus(ABC):
         return
 
     @abstractmethod
-    def run(self):
+    def run(self, *args):
         pass
 
     @staticmethod
-    def generate_blk() -> Block:
+    def generate_blk(app) -> Block:
         pass
 
     @staticmethod

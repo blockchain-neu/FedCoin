@@ -13,10 +13,11 @@ class FedCoin(Application):
         super(FedCoin, self).__init__()
         self.msg_handler = PoSapMessageHandler(self)
         self.app_vars['t'] = 0
-        self.app_vars['ave_s'] = [0] * K
-        self.app_vars['local_blk'] = PoSapBlock(0, '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-                                                   '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00')
+        self.app_vars['s'] = None
+        self.app_vars['ave_s'] = [0.0] * K
+        self.app_vars['received'] = False
         self.app_vars['weights_list'] = []
+        self.app_vars['requester_addr'] = None
         return
 
     def run(self):

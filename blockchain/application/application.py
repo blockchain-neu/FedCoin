@@ -8,11 +8,10 @@ from blockchain.util import Printer
 class Application:
     def __init__(self):
         self.app_vars = {
-            'size': [0],
+            'size': 0,
             'last_hash': '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                          '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
             'addr': P2P.get_addr(),
-            'local_blk': None,
             'whitelist': [P2P.get_addr()],
             'chain_struct': ChainStructure()
         }

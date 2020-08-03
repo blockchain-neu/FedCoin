@@ -124,6 +124,7 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
             weights_list = self.app.get_var('weights_list')
             self.msg_handler.lock.acquire()
             weights_list.clear()
+            self.app.set_var('requester_addr', self.addr)
             self.msg_handler.lock.release()
             for i in range(K):
                 model = tf.keras.models.load_model('save_model/model_' + str(i + 1) + '.h5')
@@ -132,7 +133,7 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                 self.msg_handler.lock.release()
                 del model
                 tf.keras.backend.clear_session()
-            PoSap(self.app).run()
+            PoSap(self.msg_handler).run()
         elif self.msg_type == 'blk':
             blk = PoSapBlock.deserialize(bytes(self.msg_dict['blk']))
             size = len(self.app.get_var('size'))
@@ -155,22 +156,21 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
 
 # Consensus Layer
 class PoSap(Consensus):
-    def __init__(self, app):
+    def __init__(self, msg_handler: MessageHandler):
         super(PoSap, self).__init__()
-        self.app = app
+        self.app = msg_handler.app
+        self.lock = msg_handler.lock
         self.weights_list = self.app.get_var('weights_list')
         return
 
-    def run(self):
-        ave_s = self.app.get_var('ave_s')
+    def run(self, timeout: float = 600.0):
         s = [0.0] * K
         t = 0
         s_t = [0.0] * K
-        while True:  # not PoSap.verify_blk(self.app.get_var('local_blk'), self.app):
+        start_time = time.time()
+        while time.time() > start_time + timeout or not self.app.get_var('received'):
             r = [*range(K)]
             random.shuffle(r)
-            print(r)
-
             weights = PoSap.aggregate(self.weights_list[r[0]])
             s_t[r[0]] = PoSap.calc_accuracy(weights)
             for i in range(1, K):
@@ -180,16 +180,24 @@ class PoSap(Consensus):
                 for j in range(0, i - 1):
                     tmp += s_t[r[j]]
                 s_t[r[i]] = s_t[r[i]] - tmp
-            s = (s * t + s_t) / np.array([t + 1])
-            ave_s = (ave_s * np.array([t]) + s) / np.array([t + 1])
-            print(PoSap.calc_accuracy(weights), s)
+            s = (s * np.array([t]) + s_t) / np.array([t + 1])
             t += 1
-        # return
+        self.lock.acquire()
+        self.app.set_var('s', s)
+        self.lock.release()
+        return
 
     @staticmethod
-    def generate_blk() -> PoSapBlock:
+    def generate_blk(app) -> PoSapBlock:
+        ave_s = app.get_var('ave_s')
+        s = app.get_var('s')
+        blk = PoSapBlock(app.get_var('size'), app.get_var('last_hash'))
+        blk.winner_id = int(app.get_var('addr').split('.')[3])
+        blk.ave_s = ave_s
+        blk.winner_s = s
 
-        pass
+        blk.txs.append(0)
+        return blk
 
     @staticmethod
     def verify_blk(blk: PoSapBlock, app) -> bool:
