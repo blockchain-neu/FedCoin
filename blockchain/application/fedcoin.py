@@ -15,9 +15,11 @@ class FedCoin(Application):
         self.app_vars['t'] = 0
         self.app_vars['s'] = None
         self.app_vars['ave_s'] = [0.0] * K
+        self.app_vars['s_dict'] = {}
         self.app_vars['received'] = False
         self.app_vars['weights_list'] = []
         self.app_vars['requester_addr'] = None
+        self.app_vars['price'] = 0.0
         return
 
     def run(self):
@@ -36,7 +38,7 @@ class FedCoin(Application):
         return
 
     def run_server(self):
-        msg = TaskMessage('model.h5', PRICE, RUNTIME)
+        msg = TaskMessage([], PRICE, RUNTIME)
         try:
             while True:
                 self.network.send(msg)

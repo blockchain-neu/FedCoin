@@ -2,6 +2,7 @@ from blockchain.data.transaction import Transaction
 from blockchain.network.message import *
 from blockchain.consensus.consensus import Consensus
 from blockchain.util.settings import *
+from blockchain.util.downloader import Downloader
 import copy
 import hashlib
 import math
@@ -73,11 +74,26 @@ class PoSapBlock(Block):
 
 # Network Layer
 class TaskMessage(Message):
-    def __init__(self, model_url: str, price: float, runtime: float):
+    def __init__(self, model_urls: list, price: float, runtime: float):
         super(TaskMessage, self).__init__('task')
-        self.update_kv('model_url', model_url)
+        self.update_kv('model_urls', model_urls)
         self.update_kv('price', price)
         self.update_kv('runtime', runtime)
+        return
+
+
+class ShapleyMessage(Message):
+    def __init__(self, s: list):
+        super(ShapleyMessage, self).__init__('shapley')
+        self.update_kv('s', s)
+        return
+
+
+class AverageMessage(Message):
+    def __init__(self, ave_s: list, winner_s: list):
+        super(AverageMessage, self).__init__('average')
+        self.update_kv('ave_s', ave_s)
+        self.update_kv('winner_s', winner_s)
         return
 
 
@@ -121,10 +137,19 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                                        str(self.msg_dict['timestamp']))
         elif self.msg_type == 'task':
             price = self.msg_dict['price']
+            runtime = self.msg_dict['runtime']
+            model_urls = self.msg_dict['model_urls']
+            i = 0
+            for url in model_urls:
+                d = Downloader(url, 'save_model/model_' + str(i + 1) + '.h5')
+                d.start()
+                d.join()
+                i += 1
             weights_list = self.app.get_var('weights_list')
             self.msg_handler.lock.acquire()
             weights_list.clear()
             self.app.set_var('requester_addr', self.addr)
+            self.app.set_var('price', price)
             self.msg_handler.lock.release()
             for i in range(K):
                 model = tf.keras.models.load_model('save_model/model_' + str(i + 1) + '.h5')
@@ -133,8 +158,40 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                 self.msg_handler.lock.release()
                 del model
                 tf.keras.backend.clear_session()
-            PoSap(self.msg_handler).run()
-        elif self.msg_type == 'blk':
+            PoSap(self.msg_handler).run(runtime)
+        elif self.msg_type == 'shapley':
+            s_dict = self.app.get_var('s_dict')
+            ave_s = self.app.get_var('ave_s')
+            count = len(s_dict)
+            ave_s = (ave_s * np.array([count]) + self.msg_dict['s']) / np.array([count + 1])
+            self.msg_handler.lock.acquire()
+            s_dict[self.addr] = self.msg_dict['s']
+            self.app.set_var('ave_s', ave_s)
+            self.msg_handler.lock.release()
+            if count + 1 == K:
+                tmp_dict = {}
+                min_dist = 65535
+                min_addr = ""
+                for (addr, s) in s_dict:
+                    tmp_dict[addr] = PoSap.calc_dist(s, ave_s)
+                    if tmp_dict[addr] < min_dist:
+                        min_dist = tmp_dict[addr]
+                        min_addr = addr
+                msg = AverageMessage(ave_s, s_dict[min_addr])
+                self.network.send(msg, self.addr)
+                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
+                                   str(self.msg_dict['timestamp']))
+        elif self.msg_type == 'average':
+            if self.msg_dict['winner_s'] == self.app.get_var('s'):
+                self.msg_handler.lock.acquire()
+                self.app.set_var('ave_s', self.msg_dict['ave_s'])
+                self.msg_handler.lock.release()
+                blk = PoSap.generate_blk(self.app)
+                msg = BlockMessage(blk)
+                self.network.send(msg, self.addr)
+                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
+                                   str(self.msg_dict['timestamp']))
+        elif self.msg_type == 'block':
             blk = PoSapBlock.deserialize(bytes(self.msg_dict['blk']))
             size = len(self.app.get_var('size'))
             if PoSap.verify_blk(blk, self.msg_handler.app):
@@ -163,12 +220,12 @@ class PoSap(Consensus):
         self.weights_list = self.app.get_var('weights_list')
         return
 
-    def run(self, timeout: float = 600.0):
+    def run(self, runtime: float = 600.0):
         s = [0.0] * K
         t = 0
         s_t = [0.0] * K
         start_time = time.time()
-        while time.time() > start_time + timeout or not self.app.get_var('received'):
+        while time.time() > start_time + runtime or not self.app.get_var('received'):
             r = [*range(K)]
             random.shuffle(r)
             weights = PoSap.aggregate(self.weights_list[r[0]])
@@ -191,12 +248,12 @@ class PoSap(Consensus):
     def generate_blk(app) -> PoSapBlock:
         ave_s = app.get_var('ave_s')
         s = app.get_var('s')
+        price = app.get_var('price')
         blk = PoSapBlock(app.get_var('size'), app.get_var('last_hash'))
         blk.winner_id = int(app.get_var('addr').split('.')[3])
         blk.ave_s = ave_s
         blk.winner_s = s
-
-        blk.txs.append(0)
+        blk.txs.append(Transaction(app.get_vars('requester_addr'), app.get_var('addr'), price * SAP_PRICE))
         return blk
 
     @staticmethod
