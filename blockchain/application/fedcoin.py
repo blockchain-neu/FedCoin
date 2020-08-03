@@ -1,5 +1,5 @@
 from blockchain.network.message import JoinMessage, QuitMessage
-from blockchain.consensus.posap import PoSapBlock, PoSapMessageHandler, TaskMessage, BlockMessage
+from blockchain.consensus.posap import PoSapMessageHandler, TaskMessage
 from blockchain.application.application import Application
 from blockchain.util.settings import *
 import numpy as np
