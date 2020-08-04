@@ -213,6 +213,28 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
 
 # Consensus Layer
 class PoSap(Consensus):
+    mnist = tf.keras.datasets.mnist
+
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+    x_train, x_test = x_train / 255.0, x_test / 255.0
+    x_train = x_train.reshape(-1, 28 * 28)
+    x_test = x_test.reshape(-1, 28 * 28)
+
+    model = tf.keras.models.Sequential([
+        tf.keras.layers.Dense(512, activation='tanh', input_shape=(784,)),
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(256, activation='tanh'),
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(128, activation='tanh'),
+        tf.keras.layers.Dropout(0.2),
+        tf.keras.layers.Dense(10, activation='softmax')
+    ])
+
+    model.compile(
+        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
+        optimizer=tf.keras.optimizers.SGD(learning_rate=0.02),
+        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+
     def __init__(self, msg_handler: MessageHandler):
         super(PoSap, self).__init__()
         self.app = msg_handler.app
@@ -269,31 +291,8 @@ class PoSap(Consensus):
 
     @staticmethod
     def calc_accuracy(weights):
-        mnist = tf.keras.datasets.mnist
-
-        (x_train, y_train), (x_test, y_test) = mnist.load_data()
-        x_train, x_test = x_train / 255.0, x_test / 255.0
-        x_train = x_train.reshape(-1, 28 * 28)
-        x_test = x_test.reshape(-1, 28 * 28)
-
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.Dense(512, activation='tanh', input_shape=(784,)),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(256, activation='tanh'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(128, activation='tanh'),
-            tf.keras.layers.Dropout(0.2),
-            tf.keras.layers.Dense(10, activation='softmax')
-        ])
-
-        model.compile(
-            loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-            optimizer=tf.keras.optimizers.SGD(learning_rate=0.02),
-            metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
-
-        model.set_weights(weights)
-
-        [loss, accuracy] = model.evaluate(x_test, y_test)
+        PoSap.model.set_weights(weights)
+        [loss, accuracy] = PoSap.model.evaluate(PoSap.x_test, PoSap.y_test)
         return accuracy
 
     @staticmethod
