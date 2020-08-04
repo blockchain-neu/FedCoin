@@ -1,15 +1,10 @@
 from blockchain.application.fedcoin import *
-from blockchain.consensus.posap import *
-import copy
-import tensorflow as tf
-import tensorflow_federated as tff
-import collections
+
 
 if __name__ == '__main__':
-    app = FedCoin()
-    app.run()
     # FedCoin.run_fl_server()
-    # app = FedCoin()
+    app = FedCoin()
+    app.run_full_node()
     #
     # mnist = tf.keras.datasets.mnist
     #

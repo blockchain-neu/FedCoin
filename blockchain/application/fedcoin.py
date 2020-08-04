@@ -22,7 +22,7 @@ class FedCoin(Application):
         self.app_vars['price'] = 0.0
         return
 
-    def run(self):
+    def run_full_node(self):
         msg = JoinMessage()
         self.network.send(msg)
         self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(msg.dict['timestamp']))
@@ -37,7 +37,7 @@ class FedCoin(Application):
             self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(msg.dict['timestamp']))
         return
 
-    def run_server(self):
+    def run_lightweight_node(self):
         msg = TaskMessage([], PRICE, RUNTIME)
         try:
             while True:
@@ -107,6 +107,6 @@ class FedCoin(Application):
 
             model.fit(np.asarray(current_dataset_xx), np.asarray(current_dataset_yy), epochs=50,
                       validation_data=(x_test, y_test))
-            model.save('save_model/' + str(i + 1) + '.h5')
+            model.save('save_model/model_' + str(i + 1) + '.h5')
             model.set_weights(init_weights)
         return

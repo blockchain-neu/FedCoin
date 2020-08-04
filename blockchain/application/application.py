@@ -21,7 +21,11 @@ class Application:
         return
 
     @abstractmethod
-    def run(self):
+    def run_full_node(self):
+        pass
+
+    @abstractmethod
+    def run_lightweight_node(self):
         pass
 
     def set_var(self, key: str, value):
