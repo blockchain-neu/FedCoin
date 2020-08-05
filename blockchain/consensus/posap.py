@@ -247,7 +247,7 @@ class PoSap(Consensus):
         t = 0
         s_t = [0.0] * K
         start_time = time.time()
-        while time.time() > start_time + runtime or not self.app.get_var('received'):
+        while time.time() < start_time + runtime or not self.app.get_var('received'):
             r = [*range(K)]
             random.shuffle(r)
             weights = PoSap.aggregate(self.weights_list[r[0]])
@@ -261,6 +261,7 @@ class PoSap(Consensus):
                 s_t[r[i]] = s_t[r[i]] - tmp
             s = (s * np.array([t]) + s_t) / np.array([t + 1])
             t += 1
+            tf.keras.backend.clear_session()
         self.lock.acquire()
         self.app.set_var('s', s)
         self.lock.release()
