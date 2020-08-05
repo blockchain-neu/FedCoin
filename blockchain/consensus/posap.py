@@ -213,27 +213,22 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
 
 # Consensus Layer
 class PoSap(Consensus):
-    mnist = tf.keras.datasets.mnist
+    (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
 
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    x_train, x_test = x_train / 255.0, x_test / 255.0
-    x_train = x_train.reshape(-1, 28 * 28)
-    x_test = x_test.reshape(-1, 28 * 28)
+    # Normalize pixel values to be between 0 and 1
+    train_images, test_images = train_images / 255.0, test_images / 255.0
 
     model = tf.keras.models.Sequential([
-        tf.keras.layers.Dense(512, activation='tanh', input_shape=(784,)),
-        tf.keras.layers.Dropout(0.2),
-        tf.keras.layers.Dense(256, activation='tanh'),
-        tf.keras.layers.Dropout(0.2),
-        tf.keras.layers.Dense(128, activation='tanh'),
-        tf.keras.layers.Dropout(0.2),
-        tf.keras.layers.Dense(10, activation='softmax')
+        tf.keras.layers.Flatten(input_shape=(28, 28)),
+        tf.keras.layers.Dense(128, activation='relu'),
+        tf.keras.layers.Dense(10)
     ])
 
-    model.compile(
-        loss=tf.keras.losses.SparseCategoricalCrossentropy(),
-        optimizer=tf.keras.optimizers.SGD(learning_rate=0.02),
-        metrics=[tf.keras.metrics.SparseCategoricalAccuracy()])
+    # model.summary()
+
+    model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.1),
+                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+                  metrics=['accuracy'])
 
     def __init__(self, msg_handler: MessageHandler):
         super(PoSap, self).__init__()
@@ -242,7 +237,7 @@ class PoSap(Consensus):
         self.weights_list = self.app.get_var('weights_list')
         return
 
-    def run(self, runtime: float = 600.0):
+    def run(self, runtime: float = 60.0):
         s = [0.0] * K
         t = 0
         s_t = [0.0] * K
@@ -293,7 +288,7 @@ class PoSap(Consensus):
     @staticmethod
     def calc_accuracy(weights):
         PoSap.model.set_weights(weights)
-        [loss, accuracy] = PoSap.model.evaluate(PoSap.x_test, PoSap.y_test)
+        [loss, accuracy] = PoSap.model.evaluate(PoSap.test_images, PoSap.test_labels)
         return accuracy
 
     @staticmethod
