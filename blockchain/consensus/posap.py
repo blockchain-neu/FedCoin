@@ -3,6 +3,7 @@ from blockchain.network.message import *
 from blockchain.consensus.consensus import Consensus
 from blockchain.util.settings import *
 from blockchain.util.downloader import Downloader
+import base64
 import copy
 import hashlib
 import math
@@ -48,18 +49,18 @@ class PoSapBlock(Block):
         pointer = 12
         ave_s = []
         for i in range(len_ave_s):
-            (val) = struct.unpack('!d', data[pointer:pointer+4])
-            pointer += 4
+            (val, ) = struct.unpack('!d', data[pointer:pointer+8])
+            pointer += 8
             ave_s.append(val)
-        (prev_hash) = struct.unpack('!s', data[pointer:pointer + 32])
+        (prev_hash, ) = struct.unpack('!64s', data[pointer:pointer+64])
         prev_hash = prev_hash.decode()
-        pointer += 32
-        (len_winner_s) = struct.unpack('!I', data[pointer:pointer+4])
+        pointer += 64
+        (len_winner_s, ) = struct.unpack('!I', data[pointer:pointer+4])
         pointer += 4
         winner_s = []
         for i in range(len_winner_s):
-            (val) = struct.unpack('!d', data[pointer:pointer+4])
-            pointer += 4
+            (val, ) = struct.unpack('!d', data[pointer:pointer+8])
+            pointer += 8
             winner_s.append(val)
         (difficulty, len_txs) = struct.unpack('!dI', data[pointer:pointer+12])
         pointer += 12
@@ -101,7 +102,7 @@ class AverageMessage(Message):
 class BlockMessage(Message):
     def __init__(self, blk: Block):
         super(BlockMessage, self).__init__('block')
-        self.update_kv('blk', blk)
+        self.update_kv('blk', base64.b64encode(blk.serialize()).decode())
         return
 
 
@@ -125,7 +126,7 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
     def run(self):
         self.base_handle()
         if self.msg_type == 're_sync':
-            blk = PoSapBlock.deserialize(bytes(self.msg_dict['blk']))
+            blk = PoSapBlock.deserialize(base64.b64decode(self.msg_dict['blk'].encode()))
             if len(self.app.get_var('chain_struct').chain) == blk.blk_id and \
                     PoSap.verify_blk(blk, self.msg_handler.app):
                 self.msg_handler.lock.acquire()
@@ -185,11 +186,8 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                         min_addr = addr
                 msg = AverageMessage(ave_s.tolist(), s_dict[min_addr])
                 self.network.send(msg)
-                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
-                                   str(self.msg_dict['timestamp']))
+                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(self.msg_dict['timestamp']))
         elif self.msg_type == 'average':
-            print(self.msg_dict['winner_s'])
-            print(self.app.get_var('s'))
             if self.msg_dict['winner_s'] == self.app.get_var('s'):
                 self.msg_handler.lock.acquire()
                 self.app.set_var('ave_s', self.msg_dict['ave_s'])
@@ -197,16 +195,17 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                 blk = PoSap.generate_blk(self.app)
                 msg = BlockMessage(blk)
                 self.network.send(msg)
-                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
+                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to at ' +
                                    str(self.msg_dict['timestamp']))
         elif self.msg_type == 'block':
-            blk = PoSapBlock.deserialize(self.msg_dict['blk'])
-            size = len(self.app.get_var('size'))
+            blk = PoSapBlock.deserialize(base64.b64decode(self.msg_dict['blk'].encode()))
+            size = self.app.get_var('size')
             if PoSap.verify_blk(blk, self.msg_handler.app):
                 if size == blk.blk_id:
                     self.msg_handler.lock.acquire()
                     self.app.get_var('chain_struct').append(blk)
                     self.app.set_var('size', size + 1)
+                    self.app.set_var('last_hash', blk.hash())
                     self.app.set_var('received', True)
                     self.msg_handler.lock.release()
                 elif size == blk.blk_id + 1:
@@ -218,6 +217,9 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                         chain_struct.append(blk)
                         self.app.set_var('received', True)
                         self.msg_handler.lock.release()
+            self.printer.print('Block {\n    blk_id: ' + str(blk.blk_id) + ',\n    winner_id: ' +
+                               str(blk.winner_id) + ',\n    ave_s: ' + str(blk.ave_s) + ',\n    prev_hash: \"' +
+                               blk.prev_hash + '\",\n    difficulty: ' + str(blk.difficulty) + '\n}')
         return
 
 

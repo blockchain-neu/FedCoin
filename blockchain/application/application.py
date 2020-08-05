@@ -9,8 +9,7 @@ class Application:
     def __init__(self):
         self.app_vars = {
             'size': 0,
-            'last_hash': '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-                         '\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00',
+            'last_hash': '0000000000000000000000000000000000000000000000000000000000000000',
             'addr': P2P.get_addr(),
             'whitelist': [P2P.get_addr()],
             'chain_struct': ChainStructure()

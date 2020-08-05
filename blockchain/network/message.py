@@ -1,4 +1,5 @@
 from blockchain.data.block import Block
+import base64
 import json
 import threading
 import time
@@ -52,7 +53,7 @@ class SyncMessage(Message):
 class ReSyncMessage(Message):
     def __init__(self, blk: Block):
         super(ReSyncMessage, self).__init__('re_sync')
-        self.update_kv('blk', blk.serialize())
+        self.update_kv('blk', base64.b64encode(blk.serialize()).decode())
         return
 
 
