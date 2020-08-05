@@ -45,8 +45,10 @@ class FedCoin(Application):
                 self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(msg.dict['timestamp']))
                 while time.time() < msg.dict['timestamp'] + RUNTIME:
                     (msg, addr) = self.network.receive()
-                    if addr != self.app_vars['addr']:
-                        self.msg_handler.msg_handle(msg, addr)
+                    if addr != self.app_vars['addr'] and msg.dict['type'] == 'block':
+                        self.network.send(msg)
+                        self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' +
+                                           str(msg.dict['timestamp']))
         except KeyboardInterrupt:
             pass
         return
