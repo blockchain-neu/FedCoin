@@ -69,19 +69,11 @@ class MessageHandler:
         self.printer = app.printer
         self.app = app
         self.lock = threading.Lock()
-        self.tasks = []
-        return
-
-    def __del__(self):
-        for task in self.tasks:
-            if task.is_alive():
-                task.join()
         return
 
     def msg_handle(self, msg: Message, addr: str):
         t = MessageHandlingTask(self, msg, addr)
         t.start()
-        self.tasks.append(t)
         return
 
 

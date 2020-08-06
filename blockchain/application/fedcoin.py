@@ -39,22 +39,21 @@ class FedCoin(Application):
     def run_lightweight_node(self):
         msg = TaskMessage([], PRICE, RUNTIME)
         try:
+            self.network.send(msg)
+            self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(msg.dict['timestamp']))
             while True:
-                self.network.send(msg)
-                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(msg.dict['timestamp']))
-                while time.time() < msg.dict['timestamp'] + RUNTIME:
-                    (recv_msg, addr) = self.network.receive()
-                    if addr != self.app_vars['addr']:
-                        if recv_msg.dict['type'] == 'shapley':
-                            self.msg_handler.msg_handle(recv_msg, addr)
-                        elif recv_msg.dict['type'] == 'block':
-                            self.printer.print('Received a \"' + msg.dict['type'] + '\" message from ' + addr +
-                                               ' at ' + str(msg.dict['timestamp']))
-                            self.get_var('s_dict').clear()
-                            msg = TaskMessage([], PRICE, RUNTIME)
-                            self.network.send(msg)
-                            self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' +
-                                               str(msg.dict['timestamp']))
+                (recv_msg, addr) = self.network.receive()
+                if addr != self.app_vars['addr']:
+                    if recv_msg.dict['type'] == 'shapley':
+                        self.msg_handler.msg_handle(recv_msg, addr)
+                    elif recv_msg.dict['type'] == 'block':
+                        self.printer.print('Received a \"' + msg.dict['type'] + '\" message from ' + addr +
+                                           ' at ' + str(msg.dict['timestamp']))
+                        self.get_var('s_dict').clear()
+                        msg = TaskMessage([], PRICE, RUNTIME)
+                        self.network.send(msg)
+                        self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' +
+                                           str(msg.dict['timestamp']))
         except KeyboardInterrupt:
             pass
         return
