@@ -114,7 +114,6 @@ class PoSapMessageHandler(MessageHandler):
     def msg_handle(self, msg: Message, addr: str):
         t = PoSapMessageHandlingTask(self, msg, addr)
         t.start()
-        self.tasks.append(t)
         return
 
 
@@ -193,6 +192,12 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                 self.app.set_var('ave_s', self.msg_dict['ave_s'])
                 self.msg_handler.lock.release()
                 blk = PoSap.generate_blk(self.app)
+                self.msg_handler.lock.acquire()
+                self.app.get_var('chain_struct').append_blk(blk)
+                self.app.set_var('size', self.app.get_var('size') + 1)
+                self.app.set_var('last_hash', blk.hash())
+                self.app.set_var('received', True)
+                self.msg_handler.lock.release()
                 msg = BlockMessage(blk)
                 self.network.send(msg)
                 self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to at ' +
@@ -203,7 +208,7 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
             if PoSap.verify_blk(blk, self.msg_handler.app):
                 if size == blk.blk_id:
                     self.msg_handler.lock.acquire()
-                    self.app.get_var('chain_struct').append(blk)
+                    self.app.get_var('chain_struct').append_blk(blk)
                     self.app.set_var('size', size + 1)
                     self.app.set_var('last_hash', blk.hash())
                     self.app.set_var('received', True)
@@ -278,6 +283,7 @@ class PoSap(Consensus):
         ave_s = app.get_var('ave_s')
         s = app.get_var('s')
         price = app.get_var('price')
+        print(price)
         blk = PoSapBlock(app.get_var('size'), app.get_var('last_hash'))
         blk.winner_id = int(app.get_var('addr').split('.')[3])
         blk.ave_s = ave_s

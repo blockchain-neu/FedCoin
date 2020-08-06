@@ -13,5 +13,5 @@ class Transaction:
 
     @staticmethod
     def deserialize(data: bytes):
-        (amount) = struct.unpack('!d', data[8:])
+        (amount, ) = struct.unpack('!d', data[8:])
         return Transaction(socket.inet_ntoa(data[0:4]), socket.inet_ntoa(data[4:8]), amount)
