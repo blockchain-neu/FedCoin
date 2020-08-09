@@ -4,7 +4,6 @@ from blockchain.application.application import Application
 from blockchain.util.settings import *
 import math
 import tensorflow as tf
-import time
 
 
 class FedCoin(Application):
@@ -28,7 +27,7 @@ class FedCoin(Application):
         try:
             while True:
                 (msg, addr) = self.network.receive()
-                if addr != self.app_vars['addr']:
+                if addr != self.app_vars['addr'] or msg.dict['type'] == 'shapley':
                     self.msg_handler.msg_handle(msg, addr)
         except KeyboardInterrupt:
             msg = QuitMessage()
@@ -44,9 +43,7 @@ class FedCoin(Application):
             while True:
                 (recv_msg, addr) = self.network.receive()
                 if addr != self.app_vars['addr']:
-                    if recv_msg.dict['type'] == 'shapley':
-                        self.msg_handler.msg_handle(recv_msg, addr)
-                    elif recv_msg.dict['type'] == 'block':
+                    if recv_msg.dict['type'] == 'block':
                         self.printer.print('Received a \"' + msg.dict['type'] + '\" message from ' + addr +
                                            ' at ' + str(msg.dict['timestamp']))
                         self.get_var('s_dict').clear()
