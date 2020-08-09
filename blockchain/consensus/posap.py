@@ -91,14 +91,6 @@ class ShapleyMessage(Message):
         return
 
 
-class AverageMessage(Message):
-    def __init__(self, ave_s: list, winner_s: list):
-        super(AverageMessage, self).__init__('average')
-        self.update_kv('ave_s', ave_s)
-        self.update_kv('winner_s', winner_s)
-        return
-
-
 class BlockMessage(Message):
     def __init__(self, blk: Block):
         super(BlockMessage, self).__init__('block')
@@ -162,9 +154,8 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                 tf.keras.backend.clear_session()
             PoSap(self.msg_handler).run(self.msg_dict['timestamp'], runtime)
             msg = ShapleyMessage(self.app.get_var('s'))
-            self.network.send(msg, self.addr)
-            self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to ' + self.addr + ' at ' +
-                               str(self.msg_dict['timestamp']))
+            self.network.send(msg)
+            self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(self.msg_dict['timestamp']))
         elif self.msg_type == 'shapley':
             s_dict = self.app.get_var('s_dict')
             ave_s = self.app.get_var('ave_s')
@@ -183,25 +174,20 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                     if tmp_dict[addr] < min_dist:
                         min_dist = tmp_dict[addr]
                         min_addr = addr
-                msg = AverageMessage(ave_s.tolist(), s_dict[min_addr])
-                self.network.send(msg)
-                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(self.msg_dict['timestamp']))
-        elif self.msg_type == 'average':
-            if self.msg_dict['winner_s'] == self.app.get_var('s'):
-                self.msg_handler.lock.acquire()
-                self.app.set_var('ave_s', self.msg_dict['ave_s'])
-                self.msg_handler.lock.release()
-                blk = PoSap.generate_blk(self.app)
-                self.msg_handler.lock.acquire()
-                self.app.get_var('chain_struct').append_blk(blk)
-                self.app.set_var('size', self.app.get_var('size') + 1)
-                self.app.set_var('last_hash', blk.hash())
-                self.app.set_var('received', True)
-                self.msg_handler.lock.release()
-                msg = BlockMessage(blk)
-                self.network.send(msg)
-                self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to at ' +
-                                   str(self.msg_dict['timestamp']))
+                if s_dict[min_addr] == self.app.get_var('s'):
+                    self.msg_handler.lock.acquire()
+                    self.app.set_var('ave_s', ave_s.tolist())
+                    blk = PoSap.generate_blk(self.app)
+                    self.app.get_var('chain_struct').append_blk(blk)
+                    self.app.set_var('size', self.app.get_var('size') + 1)
+                    self.app.set_var('last_hash', blk.hash())
+                    self.app.set_var('received', True)
+                    s_dict.clear()
+                    self.msg_handler.lock.release()
+                    msg = BlockMessage(blk)
+                    self.network.send(msg)
+                    self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to at ' +
+                                       str(self.msg_dict['timestamp']))
         elif self.msg_type == 'block':
             blk = PoSapBlock.deserialize(base64.b64decode(self.msg_dict['blk'].encode()))
             size = self.app.get_var('size')
@@ -263,16 +249,17 @@ class PoSap(Consensus):
             random.shuffle(r)
             weights = PoSap.aggregate(self.weights_list[r[0]])
             s_t[r[0]] = PoSap.calc_accuracy(weights)
+            tf.keras.backend.clear_session()
             for i in range(1, K):
                 weights = PoSap.aggregate(PoSap.aggregate(self.weights_list[r[i]]), weights, i)
                 s_t[r[i]] = PoSap.calc_accuracy(weights)
+                tf.keras.backend.clear_session()
                 tmp = 0
                 for j in range(0, i - 1):
                     tmp += s_t[r[j]]
                 s_t[r[i]] = s_t[r[i]] - tmp
             s = (s * np.array([t]) + s_t) / np.array([t + 1])
             t += 1
-            tf.keras.backend.clear_session()
         self.lock.acquire()
         self.app.set_var('s', s.tolist())
         self.lock.release()
@@ -305,7 +292,7 @@ class PoSap(Consensus):
     @staticmethod
     def calc_accuracy(weights):
         PoSap.model.set_weights(weights)
-        [loss, accuracy] = PoSap.model.evaluate(PoSap.test_images, PoSap.test_labels)
+        [_, accuracy] = PoSap.model.evaluate(PoSap.test_images, PoSap.test_labels)
         return accuracy
 
     @staticmethod
