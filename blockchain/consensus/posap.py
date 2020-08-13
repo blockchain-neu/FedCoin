@@ -27,6 +27,7 @@ class PoSapBlock(Block):
             self.difficulty = D
             self.task_spec = []
             self.txs = []
+            self.r_list_hash = "0000000000000000000000000000000000000000000000000000000000000000"
             self.readonly = False
         return
 
@@ -139,8 +140,10 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                 d.join()
                 i += 1
             weights_list = self.app.get_var('weights_list')
+            r_list = self.app.get_var('r_list')
             self.msg_handler.lock.acquire()
             weights_list.clear()
+            r_list.clear()
             self.app.set_var('requester_addr', self.addr)
             self.app.set_var('price', price)
             self.app.set_var('received', False)
@@ -178,16 +181,20 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                     self.msg_handler.lock.acquire()
                     self.app.set_var('ave_s', ave_s.tolist())
                     blk = PoSap.generate_blk(self.app)
+                    s_dict.clear()
                     self.app.get_var('chain_struct').append_blk(blk)
                     self.app.set_var('size', self.app.get_var('size') + 1)
                     self.app.set_var('last_hash', blk.hash())
                     self.app.set_var('received', True)
-                    s_dict.clear()
                     self.msg_handler.lock.release()
                     msg = BlockMessage(blk)
                     self.network.send(msg)
                     self.printer.print('Sent a \"' + msg.dict['type'] + '\" message to at ' +
                                        str(self.msg_dict['timestamp']))
+                else:
+                    self.msg_handler.lock.acquire()
+                    s_dict.clear()
+                    self.msg_handler.lock.release()
         elif self.msg_type == 'block':
             blk = PoSapBlock.deserialize(base64.b64decode(self.msg_dict['blk'].encode()))
             size = self.app.get_var('size')
@@ -238,6 +245,7 @@ class PoSap(Consensus):
         self.app = msg_handler.app
         self.lock = msg_handler.lock
         self.weights_list = self.app.get_var('weights_list')
+        self.r_list = self.app.get_var('r_list')
         return
 
     def run(self, timestamp: float, runtime: float = RUNTIME):
@@ -247,6 +255,9 @@ class PoSap(Consensus):
         while time.time() < timestamp + runtime and not self.app.get_var('received'):
             r = [*range(K)]
             random.shuffle(r)
+            self.lock.acquire()
+            self.r_list.append(r)
+            self.lock.release()
             weights = PoSap.aggregate(self.weights_list[r[0]])
             s_t[r[0]] = PoSap.calc_accuracy(weights)
             tf.keras.backend.clear_session()
