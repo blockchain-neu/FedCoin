@@ -48,6 +48,12 @@ Parameters are defined in `blockchain/util/settings.py`, which are showed as fol
 
 Note: The condition "TRAIN_PRICE + COM_PRICE + SAP_PRICE = 1" should be satisfied.
 
+## Build and run
+
+The shell code `python main.py` will build `fedcoin` and `fedcoin_lw` images, and run several `fedcoin` containers that matches the number of replicas defined in settings.
+
+The batch file `clean.sh` will stop and delete containers, as well as delete images that are untagged.
+
 ## References
 
 * Yuan Liu, Shuai Sun, Zhengpeng Ai, Shuangfeng Zhang, Zelei Liu, Han Yu. FedCoin: A Peer-to-Peer Payment System for Federated Learning ([arXiv:2002.11711](https://arxiv.org/abs/2002.11711))
