@@ -1,3 +1,3 @@
-docker stop "$(docker ps -a -q)"
-docker rm "$(docker ps -a -q)"
-docker rmi "$(docker images -f 'dangling=true' -q)"
+docker stop $(docker ps -a -q)
+docker rm $(docker ps -a -q)
+docker images | grep none | awk "{print $3}" | xargs docker rmi

@@ -31,31 +31,28 @@ from blockchain.application.fedcoin import FedCoin
 FedCoin.run_fl_server()
 ```
 
-### Build
+### Set parameters
 
-To build the container of miners, just run:
-```shell script
-docker build -t fedcoin .
-```
+Parameters are defined in `blockchain/util/settings.py`, which are showed as follows:
 
-If your computer is in the user mode, you may escalate the privilege using the following command with the `sudo` prefix:
-```shell script
-sudo docker build -t fedcoin .
-```
+|Parameter|Description|Type|Range|Default|
+|:-------:|:----------|:--:|:---:|:-----:|
+|K|Number of FL clients|int|[2, inf]|20|
+|R|Number of replicas (miners)|int|[2, inf]|2|
+|D|Difficulty in mining|float|[0.0, inf]|1.5|
+|PRICE|Amount of FedCoins as rewards|float|[0.0, inf]|1000.0|
+|RUNTIME|Time to mine in a round|float|[0.0, inf]|15.0|
+|TRAIN_PRICE|Payments to the FL clients|float|[0.0, 1.0]|0.7|
+|COM_PRICE|Payments to the FL server for processing the model aggregation|float|[0.0, 1.0]|0.1|
+|SAP_PRICE|Payments yo the blockchain network miners for calculating SV|float|[0.0, 1.0]|0.2|
 
-To build the container of the FL server, you should modify `main.py` by commenting `app.run_full_node()` and uncommenting `app.run_lightweight_node()`, then run:
-```shell script
-docker build -t fedcoin_lw .
-```
+Note: The condition "TRAIN_PRICE + COM_PRICE + SAP_PRICE = 1" should be satisfied.
 
-And similarly, if your computer is in the user mode, you may escalate the privilege using the following command with the `sudo` prefix:
-```shell script
-sudo docker build -t fedcoin_lw .
-```
+## Build and run
 
-### Run
+The shell code `python main.py` will build `fedcoin` and `fedcoin_lw` images, and run several `fedcoin` containers that matches the number of replicas defined in settings.
 
-To run a miner or FL server, just using `docker run fedcoin` or `docker run fedcoin_lw`, and the `sudo` prefix may be needed according to the circumstance.
+The batch file `clean.sh` will stop and delete containers, as well as delete images that are untagged.
 
 ## References
 

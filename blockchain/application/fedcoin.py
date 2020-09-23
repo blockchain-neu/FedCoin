@@ -1,7 +1,9 @@
 from blockchain.network.message import JoinMessage, QuitMessage
-from blockchain.consensus.posap import PoSapMessageHandler, TaskMessage
+from blockchain.consensus.posap import PoSapBlock, PoSapMessageHandler, TaskMessage
 from blockchain.application.application import Application
 from blockchain.util.settings import *
+from blockchain.util.printer import Printer
+import base64
 import math
 import tensorflow as tf
 
@@ -16,6 +18,7 @@ class FedCoin(Application):
         self.app_vars['s_dict'] = {}
         self.app_vars['received'] = False
         self.app_vars['weights_list'] = []
+        self.app_vars['r_list'] = []
         self.app_vars['requester_addr'] = None
         self.app_vars['price'] = 0.0
         return
@@ -39,18 +42,15 @@ class FedCoin(Application):
         msg = TaskMessage([], PRICE, RUNTIME)
         try:
             self.network.send(msg)
-            self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' + str(msg.dict['timestamp']))
             while True:
                 (recv_msg, addr) = self.network.receive()
                 if addr != self.app_vars['addr']:
                     if recv_msg.dict['type'] == 'block':
-                        self.printer.print('Received a \"' + msg.dict['type'] + '\" message from ' + addr +
-                                           ' at ' + str(msg.dict['timestamp']))
                         self.get_var('s_dict').clear()
+                        blk = PoSapBlock.deserialize(base64.b64decode(recv_msg.dict['blk'].encode()))
+                        self.printer.print(str(blk.winner_s))
                         msg = TaskMessage([], PRICE, RUNTIME)
                         self.network.send(msg)
-                        self.printer.print('Sent a \"' + msg.dict['type'] + '\" message at ' +
-                                           str(msg.dict['timestamp']))
         except KeyboardInterrupt:
             pass
         return
