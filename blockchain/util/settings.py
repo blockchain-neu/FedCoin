@@ -1,9 +1,9 @@
 # FedCoin
-K = 20
-R = 2
+K = 7
+R = 5
 D = 1.5
 PRICE = 1000.0
-RUNTIME = 15.0
+RUNTIME = 60.0
 TRAIN_PRICE = 0.7
 COM_PRICE = 0.1
 SAP_PRICE = 0.2

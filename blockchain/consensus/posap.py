@@ -216,7 +216,7 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
                         self.app.set_var('received', True)
                         self.msg_handler.lock.release()
             self.printer.print('Block {\n    blk_id: ' + str(blk.blk_id) + ',\n    winner_id: ' +
-                               str(blk.winner_id) + ',\n    ave_s: ' + str(blk.ave_s) + ',\n    prev_hash: \"' +
+                               str(blk.winner_id) + ',\n    winner_s: ' + str(blk.winner_s) + ',\n    prev_hash: \"' +
                                blk.prev_hash + '\",\n    difficulty: ' + str(blk.difficulty) + '\n}')
         return
 
@@ -266,7 +266,7 @@ class PoSap(Consensus):
                 s_t[r[i]] = PoSap.calc_accuracy(weights)
                 tf.keras.backend.clear_session()
                 tmp = 0
-                for j in range(0, i - 1):
+                for j in range(0, i):
                     tmp += s_t[r[j]]
                 s_t[r[i]] = s_t[r[i]] - tmp
             s = (s * np.array([t]) + s_t) / np.array([t + 1])

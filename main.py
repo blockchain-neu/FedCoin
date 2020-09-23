@@ -8,5 +8,5 @@ if __name__ == '__main__':
     client.images.build(path='.', dockerfile='nodes/lightweight/dockerfile', tag='fedcoin_lw')
     containers = []
     for i in range(R):
-        container = client.containers.run('fedcoin', detach=True, mem_limit='1536m')
+        container = client.containers.run('fedcoin', detach=True)  # , mem_limit='1536m')
         containers.append(container)

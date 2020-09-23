@@ -133,3 +133,6 @@ dmypy.json
 
 # TensorFlow models
 save_model/
+
+# Others
+others/
