@@ -21,11 +21,11 @@ To build and run FedCoin, you must ensure the following software or package(s) a
 * [Python 3.7](https://www.python.org/downloads/)
 * [TensorFlow 2.3.0](https://www.tensorflow.org/install) (Mirror: [Google China](https://tensorflow.google.cn/install))
 
-Moreover, Linux distribution like [Ubuntu](https://ubuntu.com/download) and [Kubuntu](https://kubuntu.org/getkubuntu/) are recommended.
+Moreover, Linux distribution like [Ubuntu 16.04.7 LTS](https://releases.ubuntu.com/16.04.7/) is recommended as the operating system. [Anaconda](https://www.anaconda.com/products/individual#Downloads) (Mirror: [TUNA](https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/)) is recommended as the environment manager. Run the `conda create -n fedcoin python=3.5 tensorflow-gpu` command, and the `python -m pip install docker` command in new created `fedcoin` environment could easily get a basic running environment.
 
 ### Generate weights
 
-Firstly, you should create a directory named `save_model`, then run the following codes in the Python environment to generate weights:
+Run the following codes in the Python environment to generate weights:
 ```python
 from blockchain.application.fedcoin import FedCoin
 FedCoin.run_fl_server()
@@ -52,8 +52,11 @@ Note: The condition "TRAIN_PRICE + COM_PRICE + SAP_PRICE = 1" should be satisfie
 
 The shell code `python main.py` will build `fedcoin` and `fedcoin_lw` images, and run several `fedcoin` containers that matches the number of replicas defined in settings.
 
+Run `docker run fedcoin_lw` will start publishing tasks.
+
 The batch file `clean.sh` will stop and delete containers, as well as delete images that are untagged.
 
 ## References
 
-* Yuan Liu, Shuai Sun, Zhengpeng Ai, Shuangfeng Zhang, Zelei Liu, Han Yu. FedCoin: A Peer-to-Peer Payment System for Federated Learning ([arXiv:2002.11711](https://arxiv.org/abs/2002.11711))
+* Yuan Liu, Zhengpeng Ai, Shuai Sun, Shuangfeng Zhang, Zelei Liu, Han Yu. FedCoin: A Peer-to-Peer Payment System for Federated Learning. In Book "Federated Learning: Privacy and Incentive" ([DOI:10.1007/978-3-030-63076-8_9](https://doi.org/10.1007/978-3-030-63076-8_9))
+* Yuan Liu, Shuai Sun, Zhengpeng Ai, Shuangfeng Zhang, Zelei Liu, Han Yu. FedCoin: A Peer-to-Peer Payment System for Federated Learning. In arXiv ([arXiv:2002.11711](https://arxiv.org/abs/2002.11711))

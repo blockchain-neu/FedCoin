@@ -2,10 +2,10 @@ from blockchain.network.message import JoinMessage, QuitMessage
 from blockchain.consensus.posap import PoSapBlock, PoSapMessageHandler, TaskMessage
 from blockchain.application.application import Application
 from blockchain.util.settings import *
-from blockchain.util.printer import Printer
+from blockchain.util.dataset_loader import *
 import base64
 import math
-import tensorflow as tf
+import keras
 
 
 class FedCoin(Application):
@@ -57,21 +57,21 @@ class FedCoin(Application):
 
     @staticmethod
     def run_fl_server():
-        (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+        (train_images, train_labels), (test_images, test_labels) = DatasetLoader.load_mnist()
 
         # Normalize pixel values to be between 0 and 1
         train_images, test_images = train_images / 255.0, test_images / 255.0
 
-        model = tf.keras.models.Sequential([
-            tf.keras.layers.Flatten(input_shape=(28, 28)),
-            tf.keras.layers.Dense(128, activation='relu'),
-            tf.keras.layers.Dense(10)
+        model = keras.models.Sequential([
+            keras.layers.Flatten(input_shape=(28, 28)),
+            keras.layers.Dense(128, activation='relu'),
+            keras.layers.Dense(10)
         ])
 
         # model.summary()
 
-        model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.1),
-                      loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+        model.compile(optimizer='sgd',
+                      loss='sparse_categorical_crossentropy',
                       metrics=['accuracy'])
 
         init_weight = model.get_weights()
@@ -81,7 +81,7 @@ class FedCoin(Application):
             model.fit(train_images[i * client_size:(i + 1) * client_size],
                       train_labels[i * client_size:(i + 1) * client_size], epochs=10)
 
-            model.save('save_model/model_' + str(i + 1) + '.h5')
+            model.save('saves/model/' + str(i + 1) + '.h5')
 
             model.set_weights(init_weight)
 
@@ -90,5 +90,5 @@ class FedCoin(Application):
             # print('\nTest accuracy:', test_acc)
 
         del init_weight
-        tf.keras.backend.clear_session()
+        keras.backend.clear_session()
         return

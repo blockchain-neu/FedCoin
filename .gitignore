@@ -132,7 +132,8 @@ dmypy.json
 .idea/
 
 # TensorFlow models
-save_model/
+saves/model/*.h5
+saves/block/*.json
 
 # Others
 others/

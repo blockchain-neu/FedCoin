@@ -3,6 +3,7 @@ from blockchain.network.message import *
 from blockchain.consensus.consensus import Consensus
 from blockchain.util.settings import *
 from blockchain.util.downloader import Downloader
+from blockchain.util.dataset_loader import DatasetLoader
 import base64
 import copy
 import hashlib
@@ -10,7 +11,7 @@ import math
 import numpy as np
 import random
 import struct
-import tensorflow as tf
+import keras
 
 
 # Data Layer
@@ -135,7 +136,7 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
             model_urls = self.msg_dict['model_urls']
             i = 0
             for url in model_urls:
-                d = Downloader(url, 'save_model/model_' + str(i + 1) + '.h5')
+                d = Downloader(url, 'saves/model/' + str(i + 1) + '.h5')
                 d.start()
                 d.join()
                 i += 1
@@ -149,12 +150,12 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
             self.app.set_var('received', False)
             self.msg_handler.lock.release()
             for i in range(K):
-                model = tf.keras.models.load_model('save_model/model_' + str(i + 1) + '.h5')
+                model = keras.models.load_model('saves/model/' + str(i + 1) + '.h5')
                 self.msg_handler.lock.acquire()
                 weights_list.append(copy.deepcopy(model.get_weights()))
                 self.msg_handler.lock.release()
                 del model
-                tf.keras.backend.clear_session()
+                keras.backend.clear_session()
             PoSap(self.msg_handler).run(self.msg_dict['timestamp'], runtime)
             msg = ShapleyMessage(self.app.get_var('s'))
             self.network.send(msg)
@@ -223,21 +224,21 @@ class PoSapMessageHandlingTask(MessageHandlingTask):
 
 # Consensus Layer
 class PoSap(Consensus):
-    (train_images, train_labels), (test_images, test_labels) = tf.keras.datasets.mnist.load_data()
+    (train_images, train_labels), (test_images, test_labels) = DatasetLoader.load_mnist()
 
     # Normalize pixel values to be between 0 and 1
     train_images, test_images = train_images / 255.0, test_images / 255.0
 
-    model = tf.keras.models.Sequential([
-        tf.keras.layers.Flatten(input_shape=(28, 28)),
-        tf.keras.layers.Dense(128, activation='relu'),
-        tf.keras.layers.Dense(10)
+    model = keras.models.Sequential([
+        keras.layers.Flatten(input_shape=(28, 28)),
+        keras.layers.Dense(128, activation='relu'),
+        keras.layers.Dense(10)
     ])
 
     # model.summary()
 
-    model.compile(optimizer=tf.keras.optimizers.SGD(learning_rate=0.1),
-                  loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+    model.compile(optimizer='sgd',
+                  loss='sparse_categorical_crossentropy',
                   metrics=['accuracy'])
 
     def __init__(self, msg_handler: MessageHandler):
@@ -260,11 +261,11 @@ class PoSap(Consensus):
             self.lock.release()
             weights = PoSap.aggregate(self.weights_list[r[0]])
             s_t[r[0]] = PoSap.calc_accuracy(weights)
-            tf.keras.backend.clear_session()
+            keras.backend.clear_session()
             for i in range(1, K):
                 weights = PoSap.aggregate(PoSap.aggregate(self.weights_list[r[i]]), weights, i)
                 s_t[r[i]] = PoSap.calc_accuracy(weights)
-                tf.keras.backend.clear_session()
+                keras.backend.clear_session()
                 tmp = 0
                 for j in range(0, i):
                     tmp += s_t[r[j]]
