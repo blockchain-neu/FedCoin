@@ -77,6 +77,13 @@ class PoSapBlock(Block):
 
 
 # Network Layer
+class KeyMessage(Message):
+    def __init__(self, pk: tuple):
+        super(KeyMessage, self).__init__('key')
+        self.update_kv('pk', pk)
+        return
+
+
 class TaskMessage(Message):
     def __init__(self, model_urls: list, price: float, runtime: float):
         super(TaskMessage, self).__init__('task')

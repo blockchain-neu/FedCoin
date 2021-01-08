@@ -18,7 +18,7 @@ A Peer-to-Peer Payment System for Federated Learning
 To build and run FedCoin, you must ensure the following software or package(s) are installed in your experimental computer(s):
 
 * [Docker](https://docs.docker.com/engine/install/) (Mirror: [TUNA](https://mirrors.tuna.tsinghua.edu.cn/help/docker-ce/))
-* [Python 3.7](https://www.python.org/downloads/)
+* [Python 3.5](https://www.python.org/downloads/)
 * [TensorFlow 2.3.0](https://www.tensorflow.org/install) (Mirror: [Google China](https://tensorflow.google.cn/install))
 
 Moreover, Linux distribution like [Ubuntu 16.04.7 LTS](https://releases.ubuntu.com/16.04.7/) is recommended as the operating system. [Anaconda](https://www.anaconda.com/products/individual#Downloads) (Mirror: [TUNA](https://mirrors.tuna.tsinghua.edu.cn/anaconda/archive/)) is recommended as the environment manager. Run the `conda create -n fedcoin python=3.5 tensorflow-gpu` command, and the `python -m pip install docker` command in new created `fedcoin` environment could easily get a basic running environment.
